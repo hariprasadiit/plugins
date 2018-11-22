@@ -186,7 +186,9 @@ UIImage * fixOrientationOfImage(UIImage * image) {
   NSAssert(self, @"super init cannot be nil");
   _captureSession = [[AVCaptureSession alloc] init];
   AVCaptureSessionPreset preset;
-  if ([resolutionPreset isEqualToString:@"high"]) {
+  if ([resolutionPreset isEqualToString:@"photo"]) {
+    preset = AVCaptureSessionPresetPhoto;
+  } else if ([resolutionPreset isEqualToString:@"high"]) {
     preset = AVCaptureSessionPresetHigh;
   } else if ([resolutionPreset isEqualToString:@"medium"]) {
     preset = AVCaptureSessionPresetMedium;
@@ -204,9 +206,6 @@ UIImage * fixOrientationOfImage(UIImage * image) {
     *error = localError;
     return nil;
   }
-  CMVideoDimensions dimensions =
-      CMVideoFormatDescriptionGetDimensions([[_captureDevice activeFormat] formatDescription]);
-  _previewSize = CGSizeMake(dimensions.width, dimensions.height);
 
   _captureVideoOutput = [AVCaptureVideoDataOutput new];
   _captureVideoOutput.videoSettings =
@@ -232,6 +231,9 @@ UIImage * fixOrientationOfImage(UIImage * image) {
         [((AVCaptureStillImageOutput *)_capturePhotoOutput) setHighResolutionStillImageOutputEnabled:YES];
     }
   [_captureSession addOutput:_capturePhotoOutput];
+    
+  CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions([[_captureDevice activeFormat] formatDescription]);
+  _previewSize = CGSizeMake(dimensions.width, dimensions.height);
   return self;
 }
 

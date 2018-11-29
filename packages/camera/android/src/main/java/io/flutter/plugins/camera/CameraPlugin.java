@@ -235,7 +235,7 @@ public class CameraPlugin implements MethodCallHandler {
       implements PluginRegistry.RequestPermissionsResultListener {
     @Override
     public boolean onRequestPermissionsResult(int id, String[] permissions, int[] grantResults) {
-      if (id == CAMERA_REQUEST_ID) {
+      if (id == CAMERA_REQUEST_ID && cameraPermissionContinuation != null) {
         cameraPermissionContinuation.run();
         return true;
       }

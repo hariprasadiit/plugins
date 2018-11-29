@@ -122,7 +122,7 @@ UIImage * fixOrientationOfImage(UIImage * image) {
                 previewPhotoSampleBuffer:(CMSampleBufferRef)previewPhotoSampleBuffer
                         resolvedSettings:(AVCaptureResolvedPhotoSettings *)resolvedSettings
                          bracketSettings:(AVCaptureBracketedStillImageSettings *)bracketSettings
-                                   error:(NSError *)error {
+                error:(NSError *)error  API_AVAILABLE(ios(10.0)){
   selfReference = nil;
   if (error) {
     _result([error flutterError]);
@@ -149,7 +149,7 @@ UIImage * fixOrientationOfImage(UIImage * image) {
                               AVCaptureAudioDataOutputSampleBufferDelegate,
                               FlutterStreamHandler>
 @property(readonly, nonatomic) int64_t textureId;
-@property(nonatomic, copy) void (^onFrameAvailable)();
+@property(nonatomic, copy) void (^onFrameAvailable)(void);
 @property(nonatomic) FlutterEventChannel *eventChannel;
 @property(nonatomic) FlutterEventSink eventSink;
 @property(readonly, nonatomic) AVCaptureSession *captureSession;
@@ -605,7 +605,7 @@ UIImage * fixOrientationOfImage(UIImage * image) {
       int64_t textureId = [_registry registerTexture:cam];
       _camera = cam;
       cam.onFrameAvailable = ^{
-        [_registry textureFrameAvailable:textureId];
+          [self->_registry textureFrameAvailable:textureId];
       };
       FlutterEventChannel *eventChannel = [FlutterEventChannel
           eventChannelWithName:[NSString

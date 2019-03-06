@@ -180,6 +180,26 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
         return nil;
     }
     
+    NSError *configError = nil;
+    [_captureDevice lockForConfiguration:&configError];
+    if(!configError) {
+        if([_captureDevice isFocusModeSupported:AVCaptureFocusModeContinuousAutoFocus])
+            [_captureDevice setFocusMode:AVCaptureFocusModeContinuousAutoFocus];
+        else if([_captureDevice isFocusModeSupported:AVCaptureFocusModeAutoFocus])
+            [_captureDevice setFocusMode:AVCaptureFocusModeAutoFocus];
+        
+        if([_captureDevice isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure])
+            [_captureDevice setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
+        if([_captureDevice isExposureModeSupported:AVCaptureExposureModeAutoExpose])
+            [_captureDevice setExposureMode:AVCaptureExposureModeAutoExpose];
+        
+        if([_captureDevice isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeAutoWhiteBalance])
+            [_captureDevice setWhiteBalanceMode:AVCaptureWhiteBalanceModeAutoWhiteBalance];
+        
+        [_captureDevice unlockForConfiguration];
+        
+    }
+    
     _captureVideoOutput = [AVCaptureVideoDataOutput new];
     _captureVideoOutput.videoSettings =
     @{(NSString *)kCVPixelBufferPixelFormatTypeKey : @(videoFormat)};

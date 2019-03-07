@@ -10,6 +10,90 @@ static FlutterError *getFlutterError(NSError *error) {
                                details:error.localizedDescription];
 }
 
+//TODO util the following issue is fixed https://github.com/btastic/flutter_native_image/issues/31
+// we have to do this because flutter_native_image strips exif info which is making images landscape oriented
+UIImage * fixOrientationOfImage(UIImage * image);
+
+UIImage * fixOrientationOfImage(UIImage * image) {
+    
+    // No-op if the orientation is already correct
+    if (image.imageOrientation == UIImageOrientationUp) return image;
+    
+    // We need to calculate the proper transformation to make the image upright.
+    // We do it in 2 steps: Rotate if Left/Right/Down, and then flip if Mirrored.
+    CGAffineTransform transform = CGAffineTransformIdentity;
+    
+    switch (image.imageOrientation) {
+        case UIImageOrientationDown:
+        case UIImageOrientationDownMirrored:
+            transform = CGAffineTransformTranslate(transform, image.size.width, image.size.height);
+            transform = CGAffineTransformRotate(transform, M_PI);
+            break;
+            
+        case UIImageOrientationLeft:
+        case UIImageOrientationLeftMirrored:
+            transform = CGAffineTransformTranslate(transform, image.size.width, 0);
+            transform = CGAffineTransformRotate(transform, M_PI_2);
+            break;
+            
+        case UIImageOrientationRight:
+        case UIImageOrientationRightMirrored:
+            transform = CGAffineTransformTranslate(transform, 0, image.size.height);
+            transform = CGAffineTransformRotate(transform, -M_PI_2);
+            break;
+        case UIImageOrientationUp:
+        case UIImageOrientationUpMirrored:
+            break;
+    }
+    
+    switch (image.imageOrientation) {
+        case UIImageOrientationUpMirrored:
+        case UIImageOrientationDownMirrored:
+            transform = CGAffineTransformTranslate(transform, image.size.width, 0);
+            transform = CGAffineTransformScale(transform, -1, 1);
+            break;
+            
+        case UIImageOrientationLeftMirrored:
+        case UIImageOrientationRightMirrored:
+            transform = CGAffineTransformTranslate(transform, image.size.height, 0);
+            transform = CGAffineTransformScale(transform, -1, 1);
+            break;
+        case UIImageOrientationUp:
+        case UIImageOrientationDown:
+        case UIImageOrientationLeft:
+        case UIImageOrientationRight:
+            break;
+    }
+    
+    // Now we draw the underlying CGImage into a new context, applying the transform
+    // calculated above.
+    CGContextRef ctx = CGBitmapContextCreate(NULL, image.size.width, image.size.height,
+                                             CGImageGetBitsPerComponent(image.CGImage), 0,
+                                             CGImageGetColorSpace(image.CGImage),
+                                             CGImageGetBitmapInfo(image.CGImage));
+    CGContextConcatCTM(ctx, transform);
+    switch (image.imageOrientation) {
+        case UIImageOrientationLeft:
+        case UIImageOrientationLeftMirrored:
+        case UIImageOrientationRight:
+        case UIImageOrientationRightMirrored:
+            // Grr...
+            CGContextDrawImage(ctx, CGRectMake(0,0,image.size.height,image.size.width), image.CGImage);
+            break;
+            
+        default:
+            CGContextDrawImage(ctx, CGRectMake(0,0,image.size.width,image.size.height), image.CGImage);
+            break;
+    }
+    
+    // And now we just create a new UIImage from the drawing context
+    CGImageRef cgimg = CGBitmapContextCreateImage(ctx);
+    UIImage *img = [UIImage imageWithCGImage:cgimg];
+    CGContextRelease(ctx);
+    CGImageRelease(cgimg);
+    return img;
+}
+
 @interface FLTSavePhotoDelegate : NSObject <AVCapturePhotoCaptureDelegate>
 @property(readonly, nonatomic) NSString *path;
 @property(readonly, nonatomic) FlutterResult result;
@@ -74,11 +158,9 @@ previewPhotoSampleBuffer:(CMSampleBufferRef)previewPhotoSampleBuffer
                     JPEGPhotoDataRepresentationForJPEGSampleBuffer:photoSampleBuffer
                     previewPhotoSampleBuffer:previewPhotoSampleBuffer];
     
-    UIImage *image = [UIImage imageWithCGImage:[UIImage imageWithData:data].CGImage
-                                         scale:1.0
-                                   orientation:[self getImageRotation]];
+    UIImage *rotated = fixOrientationOfImage([UIImage imageWithData:data]);
     // TODO(sigurdm): Consider writing file asynchronously.
-    bool success = [UIImageJPEGRepresentation(image, 1.0) writeToFile:_path atomically:YES];
+    bool success = [UIImageJPEGRepresentation(rotated, 1.0) writeToFile:_path atomically:YES];
     if (!success) {
         _result([FlutterError errorWithCode:@"IOError" message:@"Unable to write file" details:nil]);
         return;
@@ -298,12 +380,9 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
             // TODO: Maybe use the UIInterfaceOrientation if in these scenarios
             orienation = UIImageOrientationUp;
             
+            UIImage *rotated = fixOrientationOfImage([UIImage imageWithData:data]);
             
-            UIImage *image = [UIImage imageWithCGImage:[UIImage imageWithData:data].CGImage
-                                                 scale:1.0
-                                           orientation: orienation];
-            
-            bool success = [UIImageJPEGRepresentation(image, 1.0) writeToFile:path atomically:YES];
+            bool success = [UIImageJPEGRepresentation(rotated, 1.0) writeToFile:path atomically:YES];
             if (!success) {
                 result([FlutterError errorWithCode:@"IOError" message:@"Unable to write file" details:nil]);
                 return;

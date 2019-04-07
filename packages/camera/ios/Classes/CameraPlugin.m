@@ -842,6 +842,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             [reply addObject:@{
                                @"name" : [device uniqueID],
                                @"lensFacing" : lensFacing,
+                               @"sensorOrientation" : @90,
                                }];
         }
         result(reply);
@@ -897,12 +898,31 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             [_camera close];
             _dispatchQueue = nil;
             result(nil);
+        } else if ([@"prepareForVideoRecording" isEqualToString:call.method]) {
+            [_camera setUpCaptureSessionForAudio];
+            result(nil);
         } else if ([@"startVideoRecording" isEqualToString:call.method]) {
             [_camera startVideoRecordingAtPath:call.arguments[@"filePath"] result:result];
         } else if ([@"stopVideoRecording" isEqualToString:call.method]) {
             [_camera stopVideoRecordingWithResult:result];
         } else {
-            result(FlutterMethodNotImplemented);
+            NSDictionary *argsMap = call.arguments;
+            NSUInteger textureId = ((NSNumber *)argsMap[@"textureId"]).unsignedIntegerValue;
+            
+            if ([@"takePicture" isEqualToString:call.method]) {
+                [_camera captureToFile:call.arguments[@"path"] result:result];
+            } else if ([@"dispose" isEqualToString:call.method]) {
+                [_registry unregisterTexture:textureId];
+                [_camera close];
+                _dispatchQueue = nil;
+                result(nil);
+            } else if ([@"startVideoRecording" isEqualToString:call.method]) {
+                [_camera startVideoRecordingAtPath:call.arguments[@"filePath"] result:result];
+            } else if ([@"stopVideoRecording" isEqualToString:call.method]) {
+                [_camera stopVideoRecordingWithResult:result];
+            } else {
+                result(FlutterMethodNotImplemented);
+            }
         }
     }
 }
